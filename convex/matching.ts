@@ -1,6 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 
 export const upsertMatch = internalMutation({
   args: {
@@ -60,5 +59,30 @@ export const getMatchesForSession = query({
       .query("matches")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
       .take(200);
+  },
+});
+
+export const getMatchDoc = internalQuery({
+  args: {
+    profileId: v.id("profiles"),
+    matchedProfileId: v.id("profiles"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("matches")
+      .withIndex("by_profileId_and_matchedProfileId", (q) =>
+        q.eq("profileId", args.profileId).eq("matchedProfileId", args.matchedProfileId),
+      )
+      .unique();
+  },
+});
+
+export const patchReasons = internalMutation({
+  args: {
+    matchId: v.id("matches"),
+    reasons: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.matchId, { reasons: args.reasons });
   },
 });

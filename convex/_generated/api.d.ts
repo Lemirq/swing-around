@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as enrichment from "../enrichment.js";
 import type * as lib_zeroentropy from "../lib/zeroentropy.js";
 import type * as matching from "../matching.js";
 import type * as profiles from "../profiles.js";
@@ -21,6 +22,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  enrichment: typeof enrichment;
   "lib/zeroentropy": typeof lib_zeroentropy;
   matching: typeof matching;
   profiles: typeof profiles;

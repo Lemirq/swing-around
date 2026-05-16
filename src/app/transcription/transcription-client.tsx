@@ -197,11 +197,10 @@ export function TranscriptionClient() {
           <li>What&rsquo;s your role here?</li>
           <li>&ldquo;Tell me a fun fact about yourself.&rdquo;</li>
           <li>
-            &ldquo;So what are you looking to get out of being here?&rdquo;
+            &ldquo;Who specifically are you trying to meet here? e.g. fintech founders, AI engineers, crypto VCs&rdquo;
           </li>
           <li>
-            &ldquo;Last one — what can you give or offer to others while
-            you&rsquo;re here?&rdquo;
+            &ldquo;What&rsquo;s your superpower? e.g. I can intro you to YC partners, I&rsquo;m great at cold outreach, I know Kubernetes inside out&rdquo;
           </li>
         </ol>
       </div>

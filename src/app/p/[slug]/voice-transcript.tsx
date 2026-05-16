@@ -24,6 +24,10 @@ function VoiceAgentInner({ slug, sessionId }: Props) {
   >("idle");
 
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const xHandleRef = useRef<HTMLInputElement>(null);
+  const linkedinRef = useRef<HTMLInputElement>(null);
+  const githubRef = useRef<HTMLInputElement>(null);
+  const websiteRef = useRef<HTMLInputElement>(null);
 
   const conversation = useConversation({
     onMessage: ({ message, source }: { message: string; source: string }) => {
@@ -63,10 +67,19 @@ function VoiceAgentInner({ slug, sessionId }: Props) {
     setSubmitState("submitting");
     try {
       const rawTranscript = transcriptLines.join("\n");
+      const xHandle = xHandleRef.current?.value.trim() || undefined;
+      const linkedinUrl = linkedinRef.current?.value.trim() || undefined;
+      const githubHandle = githubRef.current?.value.trim() || undefined;
+      const websiteUrl = websiteRef.current?.value.trim() || undefined;
+
       const profileId = await createProfile({
         sessionId,
         displayName,
         rawTranscript,
+        xHandle,
+        linkedinUrl,
+        githubHandle,
+        websiteUrl,
       });
       setSubmitState("done");
       router.push(`/p/${slug}/explore?profileId=${profileId}`);

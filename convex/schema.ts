@@ -18,7 +18,11 @@ export default defineSchema({
     interests: v.optional(v.array(v.string())),
     xHandle: v.optional(v.string()),
     linkedinUrl: v.optional(v.string()),
+    githubHandle: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
     rawTranscript: v.optional(v.string()),
+    extractedBio: v.optional(v.string()),
+    extractedInterests: v.optional(v.array(v.string())),
     metadata: v.optional(v.any()),
     embeddingStatus: v.union(
       v.literal("pending"),

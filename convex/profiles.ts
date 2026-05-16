@@ -17,6 +17,8 @@ export const create = mutation({
     interests: v.optional(v.array(v.string())),
     xHandle: v.optional(v.string()),
     linkedinUrl: v.optional(v.string()),
+    githubHandle: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
     rawTranscript: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -24,7 +26,7 @@ export const create = mutation({
       ...args,
       embeddingStatus: "pending",
     });
-    await ctx.scheduler.runAfter(0, internal.profiles.embedAndMatch, {
+    await ctx.scheduler.runAfter(0, internal.enrichment.extractProfile, {
       profileId: id,
       sessionId: args.sessionId,
     });
@@ -70,6 +72,20 @@ export const patchEmbeddingStatus = internalMutation({
   },
 });
 
+export const patchExtracted = internalMutation({
+  args: {
+    profileId: v.id("profiles"),
+    extractedBio: v.string(),
+    extractedInterests: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.profileId, {
+      extractedBio: args.extractedBio,
+      extractedInterests: args.extractedInterests,
+    });
+  },
+});
+
 export const embedAndMatch = internalAction({
   args: {
     profileId: v.id("profiles"),
@@ -84,10 +100,13 @@ export const embedAndMatch = internalAction({
     });
     if (!profile) throw new Error(`Profile ${args.profileId} not found`);
 
+    // Prefer LLM-extracted data over raw transcript for better embeddings
     const parts = [
       `# ${profile.displayName}`,
-      profile.bio ?? "",
-      profile.interests?.length ? `Interests: ${profile.interests.join(", ")}` : "",
+      profile.extractedBio ?? profile.bio ?? "",
+      (profile.extractedInterests ?? profile.interests)?.length
+        ? `Interests: ${(profile.extractedInterests ?? profile.interests)!.join(", ")}`
+        : "",
       profile.rawTranscript ?? "",
     ].filter(Boolean);
 
@@ -123,6 +142,8 @@ export const embedAndMatch = internalAction({
         results: Array<{ slug: string; score: number; preview: string }>;
       };
 
+      const matchResults: Array<{ matchedProfileId: Id<"profiles">; score: number }> = [];
+
       for (const result of queryData.results ?? []) {
         if (result.slug === slug) continue;
         const matchedProfileId = result.slug as Id<"profiles">;
@@ -141,12 +162,33 @@ export const embedAndMatch = internalAction({
           matchedProfileId: args.profileId,
           score: result.score,
         });
+
+        matchResults.push({ matchedProfileId, score: result.score });
       }
 
       await ctx.runMutation(internal.profiles.patchEmbeddingStatus, {
         profileId: args.profileId,
         status: "done",
       });
+
+      // Generate match reasons for top 5 matches
+      const top5 = matchResults
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      for (const match of top5) {
+        const matchDoc = await ctx.runQuery(internal.matching.getMatchDoc, {
+          profileId: args.profileId,
+          matchedProfileId: match.matchedProfileId,
+        });
+        if (matchDoc) {
+          await ctx.scheduler.runAfter(0, internal.enrichment.generateMatchReasons, {
+            profileId: args.profileId,
+            matchedProfileId: match.matchedProfileId,
+            matchId: matchDoc._id,
+          });
+        }
+      }
     } catch (err) {
       await ctx.runMutation(internal.profiles.patchEmbeddingStatus, {
         profileId: args.profileId,
