@@ -27,8 +27,9 @@ function VoiceAgentInner({ slug, sessionId }: Props) {
 
   const conversation = useConversation({
     onMessage: ({ message, source }: { message: string; source: string }) => {
-      if (source === "user" && message?.trim()) {
-        setTranscriptLines((prev) => [...prev, message.trim()]);
+      if (message?.trim()) {
+        const label = source === "user" ? "User" : "Agent";
+        setTranscriptLines((prev) => [...prev, `${label}: ${message.trim()}`]);
       }
     },
     onError: (error: unknown) => {
