@@ -1,19 +1,43 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { useRouter } from "next/navigation";
+import { Id } from "../../../../convex/_generated/dataModel";
 
 const AGENT_ID = "agent_3601krs5kq8mfnz9s57xcm9vd1yy";
 
-function VoiceAgentInner() {
+type Props = {
+  slug: string;
+  sessionId: Id<"sessions">;
+};
+
+function VoiceAgentInner({ slug, sessionId }: Props) {
+  const router = useRouter();
+  const createProfile = useMutation(api.profiles.create);
+
+  const [transcriptLines, setTranscriptLines] = useState<string[]>([]);
+  const [submitState, setSubmitState] = useState<
+    "idle" | "submitting" | "done" | "error"
+  >("idle");
+
   const conversation = useConversation({
-    onError: (error) => {
+    onMessage: ({ message, source }: { message: string; source: string }) => {
+      if (source === "user" && message?.trim()) {
+        setTranscriptLines((prev) => [...prev, message.trim()]);
+      }
+    },
+    onError: (error: unknown) => {
       console.error("ElevenLabs error:", error);
     },
   });
 
   const isConnected = conversation.status === "connected";
   const isConnecting = conversation.status === "connecting";
+  const hasEnded =
+    conversation.status === "disconnected" && transcriptLines.length > 0;
 
   const toggle = useCallback(() => {
     if (isConnected) {
@@ -26,6 +50,30 @@ function VoiceAgentInner() {
     }
   }, [isConnected, conversation]);
 
+  async function handleSubmit() {
+    const nameInput = document.getElementById("speakerName") as HTMLInputElement | null;
+    const displayName = nameInput?.value.trim() ?? "";
+    if (!displayName) {
+      alert("Please enter your name before submitting.");
+      return;
+    }
+
+    setSubmitState("submitting");
+    try {
+      const rawTranscript = transcriptLines.join("\n");
+      const profileId = await createProfile({
+        sessionId,
+        displayName,
+        rawTranscript,
+      });
+      setSubmitState("done");
+      router.push(`/p/${slug}/explore?profileId=${profileId}`);
+    } catch (err) {
+      console.error("Profile creation failed:", err);
+      setSubmitState("error");
+    }
+  }
+
   const state = isConnected ? "listening" : "idle";
 
   const hint = isConnecting
@@ -34,7 +82,9 @@ function VoiceAgentInner() {
       ? conversation.isSpeaking
         ? "Agent speaking..."
         : "Listening..."
-      : "Tap to start";
+      : hasEnded
+        ? "Conversation ended — submit your profile below"
+        : "Tap to start";
 
   return (
     <div className="mic-stage" data-state={state}>
@@ -83,14 +133,29 @@ function VoiceAgentInner() {
       </div>
 
       <p className="mic-hint">{hint}</p>
+
+      {hasEnded && (
+        <button
+          className="primary-button"
+          disabled={submitState === "submitting" || submitState === "done"}
+          onClick={handleSubmit}
+          type="button"
+        >
+          {submitState === "submitting"
+            ? "Saving profile..."
+            : submitState === "error"
+              ? "Error — try again"
+              : "Submit my profile"}
+        </button>
+      )}
     </div>
   );
 }
 
-export function VoiceTranscript() {
+export function VoiceTranscript({ slug, sessionId }: Props) {
   return (
     <ConversationProvider>
-      <VoiceAgentInner />
+      <VoiceAgentInner slug={slug} sessionId={sessionId} />
     </ConversationProvider>
   );
 }
