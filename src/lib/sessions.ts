@@ -1,9 +1,5 @@
 export type PartySessionInput = {
   partyName: string;
-  hostName: string;
-  location: string;
-  startsAt: string;
-  note?: string;
 };
 
 export type PartySession = PartySessionInput & {
@@ -46,24 +42,16 @@ export function validateSessionInput(payload: unknown) {
 
   const data = payload as Partial<Record<keyof PartySessionInput, unknown>>;
   const partyName = clean(data.partyName);
-  const hostName = clean(data.hostName);
-  const location = clean(data.location);
-  const startsAt = clean(data.startsAt);
-  const note = clean(data.note);
 
-  if (!partyName || !hostName || !location || !startsAt) {
+  if (!partyName) {
     return {
-      error: "Party name, host name, location, and date/time are required.",
+      error: "Party name is required.",
     };
   }
 
   return {
     input: {
       partyName,
-      hostName,
-      location,
-      startsAt,
-      note,
     },
   };
 }

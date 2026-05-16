@@ -16,11 +16,6 @@ export default async function PartyPage({
     notFound();
   }
 
-  const startsAt = new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(session.startsAt));
-
   return (
     <main className="page-frame">
       <section className="panel party-card">
@@ -30,27 +25,6 @@ export default async function PartyPage({
           This is the shared party page. Guest actions and interactive features
           can plug in here next.
         </p>
-
-        <div className="party-meta">
-          <div className="meta-tile">
-            <span className="meta-label">Host</span>
-            <span className="meta-value">{session.hostName}</span>
-          </div>
-          <div className="meta-tile">
-            <span className="meta-label">When</span>
-            <span className="meta-value">{startsAt}</span>
-          </div>
-          <div className="meta-tile">
-            <span className="meta-label">Where</span>
-            <span className="meta-value">{session.location}</span>
-          </div>
-          <div className="meta-tile">
-            <span className="meta-label">Link ID</span>
-            <span className="meta-value">{session.slug}</span>
-          </div>
-        </div>
-
-        {session.note ? <p className="subcopy">{session.note}</p> : null}
       </section>
     </main>
   );

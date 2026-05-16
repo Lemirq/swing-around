@@ -32,9 +32,6 @@ export default function RootLayout({
               <span className="brand-mark">🍍</span>
               <span>Link Up at the Party</span>
             </Link>
-            <Link href="/create" className="nav-pill">
-              Create link
-            </Link>
           </header>
           {children}
         </div>

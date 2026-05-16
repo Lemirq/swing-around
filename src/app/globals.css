@@ -78,10 +78,10 @@ textarea {
   border-radius: 999px;
   box-shadow: 0 18px 60px rgba(64, 47, 20, 0.08);
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   left: 50%;
   max-width: 920px;
-  padding: 10px 10px 10px 16px;
+  padding: 10px 16px;
   position: fixed;
   top: 18px;
   transform: translateX(-50%);
@@ -109,15 +109,6 @@ textarea {
   width: 32px;
 }
 
-.nav-pill {
-  background: var(--foreground);
-  border-radius: 999px;
-  color: white;
-  font-size: 0.78rem;
-  font-weight: 800;
-  padding: 10px 14px;
-}
-
 .page-frame {
   margin: 0 auto;
   max-width: 1040px;
@@ -129,7 +120,7 @@ textarea {
 .hero {
   align-items: center;
   display: grid;
-  gap: 30px;
+  gap: 26px;
   justify-items: center;
   min-height: calc(100vh - 180px);
   text-align: center;
@@ -151,7 +142,7 @@ textarea {
 
 .display-title {
   font-family: var(--font-fraunces), serif;
-  font-size: clamp(3.3rem, 10vw, 8.6rem);
+  font-size: clamp(2.75rem, 8vw, 6.75rem);
   font-weight: 800;
   letter-spacing: -0.075em;
   line-height: 0.86;
@@ -228,6 +219,19 @@ textarea {
   border-radius: 34px;
   box-shadow: 0 24px 80px rgba(64, 47, 20, 0.1);
   padding: clamp(22px, 4vw, 34px);
+}
+
+.home-form-card {
+  max-width: 560px;
+  width: 100%;
+}
+
+.compact-form {
+  padding: clamp(18px, 4vw, 24px);
+}
+
+.compact-form .primary-button {
+  width: 100%;
 }
 
 .form-stack {

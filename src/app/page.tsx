@@ -1,21 +1,16 @@
-import Link from "next/link";
+import { SessionForm } from "./create/session-form";
 
 export default function Home() {
   return (
     <main className="page-frame">
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Party links without the group chat chaos</p>
-          <h1 className="display-title">Make one link for the night.</h1>
-        </div>
+      <section className="hero" id="make-link">
+        <h1 className="display-title">Increase your surface area of luck.</h1>
         <p className="subcopy">
-          Create a unique session link for your party, share it with the room,
-          and plug in the interactive stuff later.
+          Name the event, generate the link, and share it with the room.
         </p>
-        <Link href="/create" className="primary-button">
-          <span aria-hidden="true">🍍</span>
-          Generate Create Link
-        </Link>
+        <div className="home-form-card">
+          <SessionForm />
+        </div>
       </section>
     </main>
   );

@@ -17,10 +17,6 @@ export function SessionForm() {
     const formData = new FormData(event.currentTarget);
     const payload = {
       partyName: formData.get("partyName"),
-      hostName: formData.get("hostName"),
-      location: formData.get("location"),
-      startsAt: formData.get("startsAt"),
-      note: formData.get("note"),
     };
 
     try {
@@ -60,43 +56,14 @@ export function SessionForm() {
   }
 
   return (
-    <form className="panel form-stack" onSubmit={handleSubmit}>
+    <form className="panel form-stack compact-form" onSubmit={handleSubmit}>
       <div className="field">
-        <label htmlFor="partyName">Party name</label>
+        <label htmlFor="partyName">Event title</label>
         <input
           id="partyName"
           name="partyName"
           placeholder="Rooftop pineapple hour"
           required
-        />
-      </div>
-
-      <div className="field">
-        <label htmlFor="hostName">Host name</label>
-        <input id="hostName" name="hostName" placeholder="Sai" required />
-      </div>
-
-      <div className="field">
-        <label htmlFor="location">Location</label>
-        <input
-          id="location"
-          name="location"
-          placeholder="Back patio, house, or venue"
-          required
-        />
-      </div>
-
-      <div className="field">
-        <label htmlFor="startsAt">Date and time</label>
-        <input id="startsAt" name="startsAt" type="datetime-local" required />
-      </div>
-
-      <div className="field">
-        <label htmlFor="note">Optional note</label>
-        <textarea
-          id="note"
-          name="note"
-          placeholder="Dress code, parking, entry notes, or anything guests should know."
         />
       </div>
 
@@ -107,7 +74,8 @@ export function SessionForm() {
       ) : null}
 
       <button className="primary-button" disabled={state.status === "submitting"}>
-        {state.status === "submitting" ? "Creating..." : "Generate unique link"}
+        <span aria-hidden="true">🍍</span>
+        {state.status === "submitting" ? "Creating..." : "Generate create link"}
       </button>
 
       {state.status === "success" ? (
