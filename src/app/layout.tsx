@@ -27,9 +27,11 @@ export default function RootLayout({
     <html lang="en" className={`${plusJakarta.variable} ${fraunces.variable}`}>
       <body>
         <div className="site-shell">
-          <header className="floating-nav" aria-label="Primary navigation">
+          <header className="site-header">
             <Link href="/" className="brand-lockup" aria-label="Link Up home">
-              <span className="brand-mark">🍍</span>
+              <span className="brand-mark" aria-hidden="true">
+                🍍
+              </span>
               <span>Link Up at the Party</span>
             </Link>
           </header>

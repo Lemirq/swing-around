@@ -70,22 +70,10 @@ textarea {
   z-index: -1;
 }
 
-.floating-nav {
-  align-items: center;
-  backdrop-filter: blur(22px);
-  background: rgba(255, 255, 255, 0.74);
-  border: 1px solid rgba(238, 228, 213, 0.92);
-  border-radius: 999px;
-  box-shadow: 0 18px 60px rgba(64, 47, 20, 0.08);
-  display: flex;
-  justify-content: center;
-  left: 50%;
-  max-width: 920px;
-  padding: 10px 16px;
+.site-header {
+  left: 20px;
   position: fixed;
-  top: 18px;
-  transform: translateX(-50%);
-  width: calc(100% - 32px);
+  top: 20px;
   z-index: 20;
 }
 
@@ -113,7 +101,7 @@ textarea {
   margin: 0 auto;
   max-width: 1040px;
   min-height: 100vh;
-  padding: 118px 20px 64px;
+  padding: 72px 20px 64px;
   width: 100%;
 }
 
@@ -351,7 +339,60 @@ textarea {
   align-items: center;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 22px;
+  width: min(100%, 520px);
+}
+
+.voice-panel {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.54);
+  border: 1px solid rgba(238, 228, 213, 0.82);
+  border-radius: 36px;
+  box-shadow: 0 24px 80px rgba(64, 47, 20, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 20px 14px;
+  width: 100%;
+}
+
+.speaker-field {
+  display: grid;
+  gap: 10px;
+  max-width: 390px;
+  text-align: center;
+  width: 100%;
+}
+
+.speaker-field label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.speaker-field input {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--foreground);
+  font-size: 1rem;
+  font-weight: 800;
+  outline: none;
+  padding: 17px 20px;
+  text-align: center;
+  width: 100%;
+}
+
+.speaker-field input::placeholder {
+  color: rgba(118, 111, 97, 0.72);
+  font-weight: 700;
+}
+
+.speaker-field input:focus {
+  border-color: var(--sun);
+  box-shadow: 0 0 0 4px rgba(246, 196, 83, 0.2);
 }
 
 .mic-orb {
@@ -494,9 +535,9 @@ textarea {
 }
 
 @media (max-width: 760px) {
-  .floating-nav {
-    top: 12px;
-    width: calc(100% - 20px);
+  .site-header {
+    left: 16px;
+    top: 16px;
   }
 
   .brand-lockup span:last-child {
@@ -507,7 +548,7 @@ textarea {
   }
 
   .page-frame {
-    padding-top: 100px;
+    padding-top: 64px;
   }
 
   .setup-grid,
