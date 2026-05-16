@@ -1,12 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 
-export function TranscriptionClient({ sessionSlug }: { sessionSlug: string }) {
-  const session = useQuery(api.sessions.getBySlug, { slug: sessionSlug });
+export function TranscriptionClient() {
 
   const [displayName, setDisplayName] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -88,9 +87,8 @@ export function TranscriptionClient({ sessionSlug }: { sessionSlug: string }) {
           storageId: Id<"_storage">;
         };
 
-        // Save to Convex DB + create profile for gbrain matching
+        // Save to Convex DB
         await saveTranscription({
-          sessionId: session!._id,
           displayName: displayName.trim() || "Anonymous",
           rawTranscript: text,
           audioFileId: storageId,
@@ -106,12 +104,6 @@ export function TranscriptionClient({ sessionSlug }: { sessionSlug: string }) {
     }
   }
 
-  if (session === undefined) {
-    return <p className="mic-hint">Loading session...</p>;
-  }
-  if (session === null) {
-    return <p className="mic-hint">Session not found. Check your link.</p>;
-  }
 
   const state = isRecording ? "listening" : "idle";
 

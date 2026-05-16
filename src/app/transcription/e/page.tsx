@@ -9,13 +9,7 @@ export default async function ElevenLabsTranscriptionPage({
 
   return (
     <main className="party-frame">
-      {session ? (
-        <ElevenLabsTranscriptionClient sessionSlug={session} />
-      ) : (
-        <p className="mic-hint">
-          Missing session — use a link with ?session=your-party-slug
-        </p>
-      )}
+      <ElevenLabsTranscriptionClient sessionSlug={session} />
     </main>
   );
 }

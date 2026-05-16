@@ -12,21 +12,22 @@ export const generateUploadUrl = mutation({
 
 export const save = mutation({
   args: {
-    sessionId: v.id("sessions"),
+    sessionId: v.optional(v.id("sessions")),
     displayName: v.string(),
     rawTranscript: v.string(),
     audioFileId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args): Promise<Id<"transcriptions">> => {
-    // Create a profile to trigger gbrain embedding + matching
-    const profileId: Id<"profiles"> = await ctx.runMutation(
-      api.profiles.create,
-      {
+    let profileId: Id<"profiles"> | undefined;
+
+    // If session is provided, create a profile to trigger gbrain embedding + matching
+    if (args.sessionId) {
+      profileId = await ctx.runMutation(api.profiles.create, {
         sessionId: args.sessionId,
         displayName: args.displayName,
         rawTranscript: args.rawTranscript,
-      },
-    );
+      });
+    }
 
     // Save the transcription record with audio file reference
     const id: Id<"transcriptions"> = await ctx.db.insert("transcriptions", {

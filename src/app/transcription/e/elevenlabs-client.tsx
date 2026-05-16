@@ -8,8 +8,11 @@ import { Id } from "../../../../convex/_generated/dataModel";
 
 const AGENT_ID = "agent_3601krs5kq8mfnz9s57xcm9vd1yy";
 
-function ElevenLabsInner({ sessionSlug }: { sessionSlug: string }) {
-  const session = useQuery(api.sessions.getBySlug, { slug: sessionSlug });
+function ElevenLabsInner({ sessionSlug }: { sessionSlug?: string }) {
+  const session = useQuery(
+    api.sessions.getBySlug,
+    sessionSlug ? { slug: sessionSlug } : "skip",
+  );
 
   const [displayName, setDisplayName] = useState("");
   const [transcriptLines, setTranscriptLines] = useState<string[]>([]);
@@ -91,7 +94,6 @@ function ElevenLabsInner({ sessionSlug }: { sessionSlug: string }) {
   }, [isConnected, conversation]);
 
   async function handleSave() {
-    if (!session) return;
     const name = displayName.trim() || "Anonymous";
     const rawTranscript = transcriptLines.join("\n");
 
@@ -119,7 +121,7 @@ function ElevenLabsInner({ sessionSlug }: { sessionSlug: string }) {
       }
 
       await saveTranscription({
-        sessionId: session._id,
+        sessionId: session?._id,
         displayName: name,
         rawTranscript,
         audioFileId,
@@ -130,13 +132,6 @@ function ElevenLabsInner({ sessionSlug }: { sessionSlug: string }) {
       console.error(err);
       setSubmitState("error");
     }
-  }
-
-  if (session === undefined) {
-    return <p className="mic-hint">Loading session...</p>;
-  }
-  if (session === null) {
-    return <p className="mic-hint">Session not found. Check your link.</p>;
   }
 
   const state = isConnected ? "listening" : "idle";
@@ -268,7 +263,7 @@ function ElevenLabsInner({ sessionSlug }: { sessionSlug: string }) {
 export function ElevenLabsTranscriptionClient({
   sessionSlug,
 }: {
-  sessionSlug: string;
+  sessionSlug?: string;
 }) {
   return (
     <ConversationProvider>
