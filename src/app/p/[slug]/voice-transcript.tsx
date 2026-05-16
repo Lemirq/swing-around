@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -22,6 +22,8 @@ function VoiceAgentInner({ slug, sessionId }: Props) {
   const [submitState, setSubmitState] = useState<
     "idle" | "submitting" | "done" | "error"
   >("idle");
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const conversation = useConversation({
     onMessage: ({ message, source }: { message: string; source: string }) => {
@@ -51,8 +53,7 @@ function VoiceAgentInner({ slug, sessionId }: Props) {
   }, [isConnected, conversation]);
 
   async function handleSubmit() {
-    const nameInput = document.getElementById("speakerName") as HTMLInputElement | null;
-    const displayName = nameInput?.value.trim() ?? "";
+    const displayName = nameInputRef.current?.value.trim() ?? "";
     if (!displayName) {
       alert("Please enter your name before submitting.");
       return;
@@ -91,6 +92,7 @@ function VoiceAgentInner({ slug, sessionId }: Props) {
       <div className="voice-panel">
         <div className="speaker-field">
           <input
+            ref={nameInputRef}
             id="speakerName"
             name="speakerName"
             placeholder="What is your full name?"
