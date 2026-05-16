@@ -47,7 +47,9 @@ export const getMatchesForProfile = query({
       }),
     );
 
-    return enriched.filter((m) => m.matchedProfile !== null);
+    return enriched
+      .filter((m) => m.matchedProfile !== null)
+      .sort((a, b) => b.score - a.score);
   },
 });
 

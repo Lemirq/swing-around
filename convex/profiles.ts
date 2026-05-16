@@ -7,7 +7,6 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { addDocument, queryDocuments } from "./lib/zeroentropy";
 import { Id } from "./_generated/dataModel";
 
 export const create = mutation({
@@ -43,6 +42,13 @@ export const listBySession = query({
   },
 });
 
+export const getProfile = query({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.profileId);
+  },
+});
+
 export const getById = internalQuery({
   args: { profileId: v.id("profiles") },
   handler: async (ctx, args) => {
@@ -70,24 +76,22 @@ export const embedAndMatch = internalAction({
     sessionId: v.id("sessions"),
   },
   handler: async (ctx, args) => {
-    const apiKey = process.env.ZEROENTROPY_API_KEY;
-    if (!apiKey) throw new Error("ZEROENTROPY_API_KEY is not set");
+    const gbrainUrl = process.env.GBRAIN_URL;
+    if (!gbrainUrl) throw new Error("GBRAIN_URL is not set");
 
     const profile = await ctx.runQuery(internal.profiles.getById, {
       profileId: args.profileId,
     });
     if (!profile) throw new Error(`Profile ${args.profileId} not found`);
 
-    const content = [
-      profile.displayName,
+    const parts = [
+      `# ${profile.displayName}`,
       profile.bio ?? "",
-      (profile.interests ?? []).join(", "),
+      profile.interests?.length ? `Interests: ${profile.interests.join(", ")}` : "",
       profile.rawTranscript ?? "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+    ].filter(Boolean);
 
-    if (!content.trim()) {
+    if (parts.length <= 1) {
       await ctx.runMutation(internal.profiles.patchEmbeddingStatus, {
         profileId: args.profileId,
         status: "failed",
@@ -95,29 +99,46 @@ export const embedAndMatch = internalAction({
       return;
     }
 
+    const content = parts.join("\n\n");
+    const slug = args.profileId as string;
+    const base = gbrainUrl.replace(/\/$/, "");
+
     try {
-      await addDocument({
-        apiKey,
-        collection: "profiles",
-        documentId: args.profileId,
-        content,
-        metadata: { sessionId: args.sessionId },
+      await fetch(`${base}/put/${encodeURIComponent(slug)}`, {
+        method: "POST",
+        body: content,
       });
 
-      const results = await queryDocuments({
-        apiKey,
-        collection: "profiles",
-        queryContent: content,
-        topK: 20,
-        filter: { sessionId: args.sessionId },
+      await fetch(`${base}/tag/${encodeURIComponent(slug)}/session:${args.sessionId}`, {
+        method: "POST",
       });
 
-      for (const result of results) {
-        if (result.documentId === args.profileId) continue;
+      const queryRes = await fetch(`${base}/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: content, sessionId: args.sessionId, limit: 20 }),
+      });
+      const queryData = (await queryRes.json()) as {
+        ok: boolean;
+        results: Array<{ slug: string; score: number; preview: string }>;
+      };
+
+      for (const result of queryData.results ?? []) {
+        if (result.slug === slug) continue;
+        const matchedProfileId = result.slug as Id<"profiles">;
+
         await ctx.runMutation(internal.matching.upsertMatch, {
           profileId: args.profileId,
           sessionId: args.sessionId,
-          matchedProfileId: result.documentId as Id<"profiles">,
+          matchedProfileId,
+          score: result.score,
+        });
+
+        // Write reverse so existing users see new joiners on their explore page
+        await ctx.runMutation(internal.matching.upsertMatch, {
+          profileId: matchedProfileId,
+          sessionId: args.sessionId,
+          matchedProfileId: args.profileId,
           score: result.score,
         });
       }
