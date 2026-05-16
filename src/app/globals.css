@@ -332,9 +332,9 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 0;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 100vh;
-  padding: 80px 20px 40px;
+  padding: clamp(86px, 14vh, 130px) 20px 40px;
 }
 
 .party-name {
@@ -342,7 +342,7 @@ textarea {
   font-size: clamp(1.1rem, 3vw, 1.6rem);
   font-weight: 800;
   letter-spacing: -0.04em;
-  margin: 0 0 56px;
+  margin: 0 0 28px;
   opacity: 0.55;
 }
 
@@ -352,7 +352,15 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 28px;
+}
+
+.mic-orb {
+  align-items: center;
+  display: flex;
+  height: 270px;
+  justify-content: center;
   position: relative;
+  width: 270px;
 }
 
 /* rings */
@@ -362,6 +370,7 @@ textarea {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
+  z-index: 0;
 }
 
 .mic-ring {
