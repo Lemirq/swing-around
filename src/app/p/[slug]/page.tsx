@@ -28,7 +28,7 @@ export default function PartyPage() {
   return (
     <main className="party-frame">
       <p className="party-name">{session.partyName}</p>
-      <VoiceTranscript />
+      <VoiceTranscript slug={slug} />
     </main>
   );
 }
