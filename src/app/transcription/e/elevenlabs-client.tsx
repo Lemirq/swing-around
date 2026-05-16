@@ -2,13 +2,15 @@
 
 import { useCallback, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 
 const AGENT_ID = "agent_3601krs5kq8mfnz9s57xcm9vd1yy";
 
-function ElevenLabsInner() {
+function ElevenLabsInner({ sessionSlug }: { sessionSlug: string }) {
+  const session = useQuery(api.sessions.getBySlug, { slug: sessionSlug });
+
   const [displayName, setDisplayName] = useState("");
   const [transcriptLines, setTranscriptLines] = useState<string[]>([]);
   const [submitState, setSubmitState] = useState<
@@ -89,6 +91,7 @@ function ElevenLabsInner() {
   }, [isConnected, conversation]);
 
   async function handleSave() {
+    if (!session) return;
     const name = displayName.trim() || "Anonymous";
     const rawTranscript = transcriptLines.join("\n");
 
@@ -116,6 +119,7 @@ function ElevenLabsInner() {
       }
 
       await saveTranscription({
+        sessionId: session._id,
         displayName: name,
         rawTranscript,
         audioFileId,
@@ -126,6 +130,13 @@ function ElevenLabsInner() {
       console.error(err);
       setSubmitState("error");
     }
+  }
+
+  if (session === undefined) {
+    return <p className="mic-hint">Loading session...</p>;
+  }
+  if (session === null) {
+    return <p className="mic-hint">Session not found. Check your link.</p>;
   }
 
   const state = isConnected ? "listening" : "idle";
@@ -209,7 +220,7 @@ function ElevenLabsInner() {
           type="button"
         >
           {submitState === "saving"
-            ? "Saving..."
+            ? "Saving & matching..."
             : submitState === "error"
               ? "Error — try again"
               : "Save transcription"}
@@ -218,7 +229,7 @@ function ElevenLabsInner() {
 
       {submitState === "done" && (
         <p className="mic-hint" style={{ color: "var(--pine)" }}>
-          Saved!
+          Saved! You&rsquo;re in the mix.
         </p>
       )}
 
@@ -254,10 +265,14 @@ function ElevenLabsInner() {
   );
 }
 
-export function ElevenLabsTranscriptionClient() {
+export function ElevenLabsTranscriptionClient({
+  sessionSlug,
+}: {
+  sessionSlug: string;
+}) {
   return (
     <ConversationProvider>
-      <ElevenLabsInner />
+      <ElevenLabsInner sessionSlug={sessionSlug} />
     </ConversationProvider>
   );
 }

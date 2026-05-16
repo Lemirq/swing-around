@@ -1,10 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 
-export function TranscriptionClient() {
+export function TranscriptionClient({ sessionSlug }: { sessionSlug: string }) {
+  const session = useQuery(api.sessions.getBySlug, { slug: sessionSlug });
+
   const [displayName, setDisplayName] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -81,10 +84,13 @@ export function TranscriptionClient() {
           body: audioBlob,
         });
         if (!uploadRes.ok) throw new Error("Audio upload failed");
-        const { storageId } = await uploadRes.json();
+        const { storageId } = (await uploadRes.json()) as {
+          storageId: Id<"_storage">;
+        };
 
-        // Save to Convex DB
+        // Save to Convex DB + create profile for gbrain matching
         await saveTranscription({
+          sessionId: session!._id,
           displayName: displayName.trim() || "Anonymous",
           rawTranscript: text,
           audioFileId: storageId,
@@ -100,15 +106,22 @@ export function TranscriptionClient() {
     }
   }
 
+  if (session === undefined) {
+    return <p className="mic-hint">Loading session...</p>;
+  }
+  if (session === null) {
+    return <p className="mic-hint">Session not found. Check your link.</p>;
+  }
+
   const state = isRecording ? "listening" : "idle";
 
   const hint =
     submitState === "transcribing"
       ? "Transcribing..."
       : submitState === "saving"
-        ? "Saving..."
+        ? "Saving & matching..."
         : submitState === "done"
-          ? "Saved!"
+          ? "Saved! You're in the mix."
           : submitState === "error"
             ? "Something went wrong"
             : isRecording
@@ -141,7 +154,9 @@ export function TranscriptionClient() {
           <button
             aria-label={isRecording ? "Stop recording" : "Start recording"}
             className="mic-btn"
-            disabled={submitState === "transcribing" || submitState === "saving"}
+            disabled={
+              submitState === "transcribing" || submitState === "saving"
+            }
             onClick={handleToggle}
             type="button"
           >
@@ -187,12 +202,10 @@ export function TranscriptionClient() {
       >
         <ol style={{ paddingLeft: "18px", margin: 0 }}>
           <li>&ldquo;Hey! What&rsquo;s your name?&rdquo;</li>
+          <li>What&rsquo;s your role here?</li>
+          <li>&ldquo;Tell me a fun fact about yourself.&rdquo;</li>
           <li>
-            &ldquo;Nice to meet you! Tell me a fun fact about yourself.&rdquo;
-          </li>
-          <li>
-            &ldquo;Love it! So what are you looking to get out of being
-            here?&rdquo;
+            &ldquo;So what are you looking to get out of being here?&rdquo;
           </li>
           <li>
             &ldquo;Last one — what can you give or offer to others while
