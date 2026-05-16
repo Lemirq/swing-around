@@ -24,7 +24,7 @@ npx -y supergateway \
   --stdio "gbrain serve" \
   --port "$PORT" \
   --outputTransport streamableHttp \
-  --logLevel warn &
+  --logLevel none &
 GATEWAY_PID=$!
 
 # Give supergateway a moment to bind the port
