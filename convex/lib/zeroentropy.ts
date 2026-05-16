@@ -59,5 +59,10 @@ export async function queryDocuments(args: {
   // Adapt this line if the actual response shape differs
   const raw: Array<{ document_id: string; score: number }> =
     data.results ?? data;
-  return raw.map((r) => ({ documentId: r.document_id, score: r.score }));
+  return raw.map((r) => {
+    if (!r || typeof r.document_id !== "string" || typeof r.score !== "number") {
+      throw new Error(`Unexpected Zeroentropy result shape: ${JSON.stringify(r)}`);
+    }
+    return { documentId: r.document_id, score: r.score };
+  });
 }
