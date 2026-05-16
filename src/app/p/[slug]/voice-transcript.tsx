@@ -115,6 +115,42 @@ function VoiceAgentInner({ slug, sessionId }: Props) {
           />
         </div>
 
+        {hasEnded && (
+          <div className="social-links-form" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", width: "100%" }}>
+            <p style={{ fontSize: "0.85rem", opacity: 0.7, margin: "0.5rem 0 0" }}>
+              Add your links so matches can connect with you
+            </p>
+            <input
+              ref={xHandleRef}
+              placeholder="X / Twitter handle (e.g. @you)"
+              type="text"
+              aria-label="X handle"
+              style={{ fontSize: "0.9rem" }}
+            />
+            <input
+              ref={linkedinRef}
+              placeholder="LinkedIn URL"
+              type="url"
+              aria-label="LinkedIn URL"
+              style={{ fontSize: "0.9rem" }}
+            />
+            <input
+              ref={githubRef}
+              placeholder="GitHub username"
+              type="text"
+              aria-label="GitHub handle"
+              style={{ fontSize: "0.9rem" }}
+            />
+            <input
+              ref={websiteRef}
+              placeholder="Website URL"
+              type="url"
+              aria-label="Website URL"
+              style={{ fontSize: "0.9rem" }}
+            />
+          </div>
+        )}
+
         <div className="mic-orb">
           <div className="mic-rings" aria-hidden="true">
             <div className="mic-ring mic-ring-1" />

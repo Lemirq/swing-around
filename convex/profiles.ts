@@ -86,15 +86,22 @@ export const patchExtracted = internalMutation({
   },
 });
 
+export const patchEmbedding = internalMutation({
+  args: {
+    profileId: v.id("profiles"),
+    embedding: v.array(v.float64()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.profileId, { embedding: args.embedding });
+  },
+});
+
 export const embedAndMatch = internalAction({
   args: {
     profileId: v.id("profiles"),
     sessionId: v.id("sessions"),
   },
   handler: async (ctx, args) => {
-    const gbrainUrl = process.env.GBRAIN_URL;
-    if (!gbrainUrl) throw new Error("GBRAIN_URL is not set");
-
     const profile = await ctx.runQuery(internal.profiles.getById, {
       profileId: args.profileId,
     });
@@ -119,40 +126,52 @@ export const embedAndMatch = internalAction({
     }
 
     const content = parts.join("\n\n");
-    const slug = args.profileId as string;
-    const base = gbrainUrl.replace(/\/$/, "");
 
     try {
-      await fetch(`${base}/put/${encodeURIComponent(slug)}`, {
-        method: "POST",
-        body: content,
-      });
+      // Generate embedding via OpenAI
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) throw new Error("OPENAI_API_KEY is not set");
 
-      await fetch(`${base}/tag/${encodeURIComponent(slug)}/session:${args.sessionId}`, {
+      const embeddingRes = await fetch("https://api.openai.com/v1/embeddings", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openaiKey}`,
+        },
+        body: JSON.stringify({
+          model: "text-embedding-3-small",
+          input: content,
+        }),
       });
-
-      const queryRes = await fetch(`${base}/query`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: content, sessionId: args.sessionId, limit: 20 }),
-      });
-      const queryData = (await queryRes.json()) as {
-        ok: boolean;
-        results: Array<{ slug: string; score: number; preview: string }>;
+      const embeddingData = (await embeddingRes.json()) as {
+        data: Array<{ embedding: number[] }>;
       };
+      const embedding = embeddingData.data[0].embedding;
+
+      // Store embedding on profile
+      await ctx.runMutation(internal.profiles.patchEmbedding, {
+        profileId: args.profileId,
+        embedding,
+      });
+
+      // Search for similar profiles in the same session
+      const results = await ctx.vectorSearch("profiles", "by_embedding", {
+        vector: embedding,
+        limit: 20,
+        filter: (q) => q.eq("sessionId", args.sessionId),
+      });
 
       const matchResults: Array<{ matchedProfileId: Id<"profiles">; score: number }> = [];
 
-      for (const result of queryData.results ?? []) {
-        if (result.slug === slug) continue;
-        const matchedProfileId = result.slug as Id<"profiles">;
+      for (const result of results) {
+        if (result._id === args.profileId) continue;
+        const matchedProfileId = result._id;
 
         await ctx.runMutation(internal.matching.upsertMatch, {
           profileId: args.profileId,
           sessionId: args.sessionId,
           matchedProfileId,
-          score: result.score,
+          score: result._score,
         });
 
         // Write reverse so existing users see new joiners on their explore page
@@ -160,10 +179,10 @@ export const embedAndMatch = internalAction({
           profileId: matchedProfileId,
           sessionId: args.sessionId,
           matchedProfileId: args.profileId,
-          score: result.score,
+          score: result._score,
         });
 
-        matchResults.push({ matchedProfileId, score: result.score });
+        matchResults.push({ matchedProfileId, score: result._score });
       }
 
       await ctx.runMutation(internal.profiles.patchEmbeddingStatus, {

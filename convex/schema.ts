@@ -23,13 +23,20 @@ export default defineSchema({
     rawTranscript: v.optional(v.string()),
     extractedBio: v.optional(v.string()),
     extractedInterests: v.optional(v.array(v.string())),
+    embedding: v.optional(v.array(v.float64())),
     metadata: v.optional(v.any()),
     embeddingStatus: v.union(
       v.literal("pending"),
       v.literal("done"),
       v.literal("failed"),
     ),
-  }).index("by_sessionId", ["sessionId"]),
+  })
+    .index("by_sessionId", ["sessionId"])
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 1536,
+      filterFields: ["sessionId"],
+    }),
 
   transcriptions: defineTable({
     sessionId: v.optional(v.id("sessions")),

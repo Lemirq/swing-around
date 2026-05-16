@@ -247,8 +247,7 @@ function ElevenLabsInner({ sessionSlug }: { sessionSlug?: string }) {
             &ldquo;Nice to meet you! Tell me a fun fact about yourself.&rdquo;
           </li>
           <li>
-            &ldquo;Love it! So what are you looking to get out of being
-            here?&rdquo;
+            &ldquo;Who specifically are you trying to meet here? e.g. fintech founders, AI engineers, crypto VCs&rdquo;
           </li>
           <li>
             &ldquo;Last one — what can you give or offer to others while

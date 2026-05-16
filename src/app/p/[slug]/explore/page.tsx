@@ -57,6 +57,73 @@ function InterestTags({ interests }: { interests: string[] }) {
   );
 }
 
+function SocialLinks({ profile }: { profile: { xHandle?: string; linkedinUrl?: string; githubHandle?: string; websiteUrl?: string } }) {
+  const links: Array<{ href: string; label: string; icon: string }> = [];
+
+  if (profile.xHandle) {
+    const handle = profile.xHandle.replace(/^@/, "");
+    links.push({ href: `https://x.com/${handle}`, label: "X", icon: "𝕏" });
+  }
+  if (profile.linkedinUrl) {
+    links.push({ href: profile.linkedinUrl, label: "LinkedIn", icon: "in" });
+  }
+  if (profile.githubHandle) {
+    links.push({ href: `https://github.com/${profile.githubHandle}`, label: "GitHub", icon: "GH" });
+  }
+  if (profile.websiteUrl) {
+    links.push({ href: profile.websiteUrl, label: "Website", icon: "🔗" });
+  }
+
+  if (!links.length) return null;
+
+  return (
+    <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
+      {links.map((link) => (
+        <a
+          key={link.label}
+          href={link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.3rem",
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: "0.4rem",
+            padding: "0.25rem 0.6rem",
+            fontSize: "0.8rem",
+            color: "inherit",
+            textDecoration: "none",
+            opacity: 0.85,
+          }}
+        >
+          <span>{link.icon}</span>
+          <span>{link.label}</span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function MatchReasons({ reasons }: { reasons: string[] }) {
+  if (!reasons.length) return null;
+  return (
+    <div style={{ marginTop: "0.5rem" }}>
+      <span style={{ fontSize: "0.75rem", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+        Why you&apos;d vibe
+      </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", marginTop: "0.25rem" }}>
+        {reasons.map((reason, i) => (
+          <span key={i} style={{ fontSize: "0.82rem", opacity: 0.85 }}>
+            • {reason}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ExploreContent({ slug }: { slug: string }) {
   const searchParams = useSearchParams();
   const profileId = searchParams.get("profileId") as Id<"profiles"> | null;
@@ -156,12 +223,14 @@ function ExploreContent({ slug }: { slug: string }) {
             {Math.round(top.score * 100)}% match
           </span>
         </div>
-        {topProfile.bio && (
+        {(topProfile.extractedBio || topProfile.bio) && (
           <p style={{ margin: 0, opacity: 0.85, fontSize: "0.95rem", lineHeight: 1.5 }}>
-            {topProfile.bio}
+            {topProfile.extractedBio || topProfile.bio}
           </p>
         )}
-        <InterestTags interests={topProfile.interests ?? []} />
+        <InterestTags interests={topProfile.extractedInterests ?? topProfile.interests ?? []} />
+        <MatchReasons reasons={top.reasons} />
+        <SocialLinks profile={topProfile} />
       </div>
 
       {/* Secondary matches */}
@@ -181,12 +250,14 @@ function ExploreContent({ slug }: { slug: string }) {
                       {Math.round(match.score * 100)}%
                     </span>
                   </div>
-                  {p.bio && (
+                  {(p.extractedBio || p.bio) && (
                     <p style={{ margin: "0.3rem 0 0", opacity: 0.75, fontSize: "0.87rem" }}>
-                      {p.bio}
+                      {p.extractedBio || p.bio}
                     </p>
                   )}
-                  <InterestTags interests={p.interests ?? []} />
+                  <InterestTags interests={p.extractedInterests ?? p.interests ?? []} />
+                  <MatchReasons reasons={match.reasons} />
+                  <SocialLinks profile={p} />
                 </li>
               );
             })}

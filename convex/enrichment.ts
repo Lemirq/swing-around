@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { generateText, Output } from "ai";
+import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
 export const extractProfile = internalAction({
@@ -21,7 +22,7 @@ export const extractProfile = internalAction({
     if (transcript && transcript.length > 50) {
       try {
         const { output } = await generateText({
-          model: "openai/gpt-4o-mini",
+          model: openai("gpt-4o-mini"),
           output: Output.object({
             schema: z.object({
               bio: z.string().describe("A concise 1-2 sentence bio of this person based on what they shared"),
@@ -72,7 +73,7 @@ export const generateMatchReasons = internalAction({
 
     try {
       const { output } = await generateText({
-        model: "openai/gpt-4o-mini",
+        model: openai("gpt-4o-mini"),
         output: Output.object({
           schema: z.object({
             reasons: z.array(z.string()).min(1).max(3).describe("2-3 short, specific reasons these people should connect"),
