@@ -87,6 +87,14 @@ export const embedAndMatch = internalAction({
       .filter(Boolean)
       .join("\n");
 
+    if (!content.trim()) {
+      await ctx.runMutation(internal.profiles.patchEmbeddingStatus, {
+        profileId: args.profileId,
+        status: "failed",
+      });
+      return;
+    }
+
     try {
       await addDocument({
         apiKey,
