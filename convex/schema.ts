@@ -27,6 +27,12 @@ export default defineSchema({
     ),
   }).index("by_sessionId", ["sessionId"]),
 
+  transcriptions: defineTable({
+    displayName: v.string(),
+    rawTranscript: v.string(),
+    audioFileId: v.optional(v.id("_storage")),
+  }),
+
   matches: defineTable({
     profileId: v.id("profiles"),
     sessionId: v.id("sessions"),
