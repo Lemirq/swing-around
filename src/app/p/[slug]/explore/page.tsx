@@ -1,12 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useParams, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Id } from "../../../../../convex/_generated/dataModel";
 
-export default function ExplorePage() {
-  const { slug } = useParams<{ slug: string }>();
+function ExploreContent() {
   const searchParams = useSearchParams();
   const profileId = searchParams.get("profileId") as Id<"profiles"> | null;
 
@@ -81,5 +81,19 @@ export default function ExplorePage() {
         ))}
       </ul>
     </main>
+  );
+}
+
+export default function ExplorePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page-frame">
+          <p className="mic-hint">Loading...</p>
+        </main>
+      }
+    >
+      <ExploreContent />
+    </Suspense>
   );
 }
