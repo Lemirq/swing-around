@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/sessions";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import { VoiceTranscript } from "./voice-transcript";
 
 export default async function PartyPage({
   params,
@@ -17,15 +18,9 @@ export default async function PartyPage({
   }
 
   return (
-    <main className="page-frame">
-      <section className="panel party-card">
-        <p className="eyebrow">Party session</p>
-        <h1 className="section-title">{session.partyName}</h1>
-        <p className="subcopy">
-          This is the shared party page. Guest actions and interactive features
-          can plug in here next.
-        </p>
-      </section>
+    <main className="party-frame">
+      <p className="party-name">{session.partyName}</p>
+      <VoiceTranscript />
     </main>
   );
 }

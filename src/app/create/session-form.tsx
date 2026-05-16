@@ -3,8 +3,8 @@
 import { FormEvent, useState } from "react";
 
 type CreateState =
-  | { status: "idle" | "submitting"; error?: never; url?: never }
-  | { status: "error"; error: string; url?: never }
+  | { status: "idle" | "submitting"; error?: never; url?: never; copied?: never }
+  | { status: "error"; error: string; url?: never; copied?: never }
   | { status: "success"; url: string; copied: boolean; error?: never };
 
 export function SessionForm() {
@@ -38,8 +38,7 @@ export function SessionForm() {
         return;
       }
 
-      const copied = await copyToClipboard(body.url);
-      setState({ status: "success", url: body.url, copied });
+      setState({ status: "success", url: body.url, copied: false });
     } catch {
       setState({
         status: "error",
@@ -48,18 +47,32 @@ export function SessionForm() {
     }
   }
 
-  async function copyLink() {
+  async function handleLinkClick() {
     if (state.status !== "success") {
       return;
     }
 
     const copied = await copyToClipboard(state.url);
     setState({ ...state, copied });
+
+    if (copied) {
+      window.setTimeout(() => {
+        setState((current) =>
+          current.status === "success" ? { ...current, copied: false } : current,
+        );
+      }, 1600);
+    }
   }
 
-  function closePopup() {
-    setState({ status: "idle" });
-  }
+  const isSuccess = state.status === "success";
+  const buttonLabel =
+    state.status === "submitting"
+      ? "Creating..."
+      : isSuccess
+        ? state.copied
+          ? "Copied!"
+          : "Link - click to copy"
+        : "Generate create link";
 
   return (
     <form className="panel form-stack compact-form" onSubmit={handleSubmit}>
@@ -79,48 +92,15 @@ export function SessionForm() {
         </p>
       ) : null}
 
-      <button className="primary-button" disabled={state.status === "submitting"}>
-        <span aria-hidden="true">🍍</span>
-        {state.status === "submitting" ? "Creating..." : "Generate create link"}
+      <button
+        className={`primary-button${isSuccess ? " link-ready" : ""}`}
+        disabled={state.status === "submitting"}
+        onClick={isSuccess ? handleLinkClick : undefined}
+        type={isSuccess ? "button" : "submit"}
+      >
+        {!isSuccess ? <span aria-hidden="true">🍍</span> : null}
+        {buttonLabel}
       </button>
-
-      {state.status === "success" ? (
-        <div className="popup-backdrop" role="presentation">
-          <div
-            aria-labelledby="party-link-title"
-            aria-modal="true"
-            className="popup-card"
-            role="dialog"
-          >
-            <div className="popup-icon" aria-hidden="true">
-              🍍
-            </div>
-            <p className="eyebrow">Link generated</p>
-            <h2 id="party-link-title" className="popup-title">
-              {state.copied ? "Copied to clipboard." : "Your link is ready."}
-            </h2>
-            <p className="popup-copy">
-              {state.copied
-                ? "Paste it anywhere and send it to the group."
-                : "Your browser blocked auto-copy, but you can copy it here."}
-            </p>
-            <a className="share-link" href={state.url}>
-              {state.url}
-            </a>
-            <div className="popup-actions">
-              <a className="primary-button" href={state.url}>
-                Open link
-              </a>
-              <button className="secondary-button" type="button" onClick={copyLink}>
-                Copy again
-              </button>
-              <button className="ghost-button" type="button" onClick={closePopup}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </form>
   );
 }
