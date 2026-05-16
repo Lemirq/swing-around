@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 type CreateState =
   | { status: "idle" | "submitting"; error?: never; url?: never; copied?: never }
@@ -9,48 +11,34 @@ type CreateState =
 
 export function SessionForm() {
   const [state, setState] = useState<CreateState>({ status: "idle" });
+  const createSession = useMutation(api.sessions.create);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState({ status: "submitting" });
 
     const formData = new FormData(event.currentTarget);
-    const payload = {
-      partyName: formData.get("partyName"),
-    };
+    const partyName = (formData.get("partyName") as string)?.trim();
+
+    if (!partyName) {
+      setState({ status: "error", error: "Party name is required." });
+      return;
+    }
 
     try {
-      const response = await fetch("/api/sessions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const body = (await response.json()) as { error?: string; url?: string };
-
-      if (!response.ok || !body.url) {
-        setState({
-          status: "error",
-          error: body.error ?? "Could not create a party link.",
-        });
-        return;
-      }
-
-      setState({ status: "success", url: body.url, copied: false });
+      const { slug } = await createSession({ partyName });
+      const url = `${window.location.origin}/p/${slug}`;
+      setState({ status: "success", url, copied: false });
     } catch {
       setState({
         status: "error",
-        error: "Could not reach the session API. Try again.",
+        error: "Could not create a party link. Try again.",
       });
     }
   }
 
   async function handleLinkClick() {
-    if (state.status !== "success") {
-      return;
-    }
+    if (state.status !== "success") return;
 
     const copied = await copyToClipboard(state.url);
     setState({ ...state, copied });
@@ -106,10 +94,7 @@ export function SessionForm() {
 }
 
 async function copyToClipboard(value: string) {
-  if (!navigator.clipboard) {
-    return false;
-  }
-
+  if (!navigator.clipboard) return false;
   try {
     await navigator.clipboard.writeText(value);
     return true;

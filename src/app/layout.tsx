@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { ConvexClientProvider } from "@/components/convex-provider";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -26,17 +27,19 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakarta.variable} ${fraunces.variable}`}>
       <body>
-        <div className="site-shell">
-          <header className="site-header">
-            <Link href="/" className="brand-lockup" aria-label="Link Up home">
-              <span className="brand-mark" aria-hidden="true">
-                🍍
-              </span>
-              <span>Link Up at the Party</span>
-            </Link>
-          </header>
-          {children}
-        </div>
+        <ConvexClientProvider>
+          <div className="site-shell">
+            <header className="site-header">
+              <Link href="/" className="brand-lockup" aria-label="Link Up home">
+                <span className="brand-mark" aria-hidden="true">
+                  🍍
+                </span>
+                <span>Link Up at the Party</span>
+              </Link>
+            </header>
+            {children}
+          </div>
+        </ConvexClientProvider>
       </body>
     </html>
   );

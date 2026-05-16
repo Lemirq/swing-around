@@ -1,20 +1,28 @@
-import { getSession } from "@/lib/sessions";
-import { connection } from "next/server";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { useParams } from "next/navigation";
 import { VoiceTranscript } from "./voice-transcript";
 
-export default async function PartyPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  await connection();
+export default function PartyPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const session = useQuery(api.sessions.getBySlug, { slug });
 
-  const { slug } = await params;
-  const session = getSession(slug);
+  if (session === undefined) {
+    return (
+      <main className="party-frame">
+        <p className="mic-hint">Loading...</p>
+      </main>
+    );
+  }
 
-  if (!session) {
-    notFound();
+  if (session === null) {
+    return (
+      <main className="party-frame">
+        <p className="mic-error">Session not found.</p>
+      </main>
+    );
   }
 
   return (

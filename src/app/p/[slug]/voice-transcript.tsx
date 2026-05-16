@@ -1,114 +1,40 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
+import { ConversationProvider, useConversation } from "@elevenlabs/react";
 
-type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+const AGENT_ID = "agent_3601krs5kq8mfnz9s57xcm9vd1yy";
 
-type SpeechRecognitionInstance = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onend: (() => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-
-type SpeechRecognitionEventLike = {
-  resultIndex: number;
-  results: ArrayLike<{
-    isFinal: boolean;
-    0: { transcript: string };
-  }>;
-};
-
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  }
-}
-
-export function VoiceTranscript() {
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const [isListening, setIsListening] = useState(false);
-  const [isSupported] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return Boolean(window.SpeechRecognition ?? window.webkitSpeechRecognition);
+function VoiceAgentInner() {
+  const conversation = useConversation({
+    onError: (error) => {
+      console.error("ElevenLabs error:", error);
+    },
   });
-  const [transcript, setTranscript] = useState("");
-  const [interimTranscript, setInterimTranscript] = useState("");
-  const [error, setError] = useState("");
 
-  useEffect(() => {
-    const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
-    if (!Recognition) return;
+  const isConnected = conversation.status === "connected";
+  const isConnecting = conversation.status === "connecting";
 
-    const recognition = new Recognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-
-    recognition.onresult = (event) => {
-      let finalText = "";
-      let liveText = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        const text = result[0].transcript;
-        if (result.isFinal) {
-          finalText += `${text} `;
-        } else {
-          liveText += text;
-        }
-      }
-
-      if (finalText) {
-        setTranscript((c) => `${c}${finalText}`.trimStart());
-      }
-      setInterimTranscript(liveText);
-    };
-
-    recognition.onerror = (event) => {
-      setError(
-        event.error === "not-allowed"
-          ? "Microphone access was blocked."
-          : "Voice capture stopped. Try again.",
-      );
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      setInterimTranscript("");
-    };
-
-    recognitionRef.current = recognition;
-
-    return () => {
-      recognition.stop();
-      recognitionRef.current = null;
-    };
-  }, []);
-
-  function toggle() {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
+  const toggle = useCallback(() => {
+    if (isConnected) {
+      conversation.endSession();
     } else {
-      setError("");
-      try {
-        recognitionRef.current?.start();
-        setIsListening(true);
-      } catch {
-        setError("Voice capture is already starting. Try again in a moment.");
-      }
+      conversation.startSession({
+        agentId: AGENT_ID,
+        connectionType: "websocket",
+      });
     }
-  }
+  }, [isConnected, conversation]);
 
-  const visibleTranscript = [transcript, interimTranscript].filter(Boolean).join(" ");
-  const state = isListening ? "listening" : "idle";
+  const state = isConnected ? "listening" : "idle";
+
+  const hint = isConnecting
+    ? "Connecting..."
+    : isConnected
+      ? conversation.isSpeaking
+        ? "Agent speaking..."
+        : "Listening..."
+      : "Tap to start";
 
   return (
     <div className="mic-stage" data-state={state}>
@@ -131,9 +57,9 @@ export function VoiceTranscript() {
           </div>
 
           <button
-            aria-label={isListening ? "Stop recording" : "Start recording"}
+            aria-label={isConnected ? "End conversation" : "Start conversation"}
             className="mic-btn"
-            disabled={!isSupported}
+            disabled={isConnecting}
             onClick={toggle}
             type="button"
           >
@@ -156,25 +82,15 @@ export function VoiceTranscript() {
         </div>
       </div>
 
-      {error ? (
-        <p className="mic-error" role="alert">
-          {error}
-        </p>
-      ) : (
-        <p className="mic-hint">
-          {isListening ? "Listening…" : isSupported ? "Tap to speak" : "Not supported in this browser"}
-        </p>
-      )}
-
-      {visibleTranscript ? (
-        <p className="mic-transcript" aria-live="polite">
-          {transcript}
-          {interimTranscript ? (
-            <span className="mic-interim"> {interimTranscript}</span>
-          ) : null}
-        </p>
-      ) : null}
+      <p className="mic-hint">{hint}</p>
     </div>
   );
 }
 
+export function VoiceTranscript() {
+  return (
+    <ConversationProvider>
+      <VoiceAgentInner />
+    </ConversationProvider>
+  );
+}
