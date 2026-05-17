@@ -44,7 +44,7 @@ function InterestTags({ interests }: { interests: string[] }) {
         <span
           key={tag}
           style={{
-            background: "rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.12)",
             borderRadius: "999px",
             padding: "0.15rem 0.6rem",
             fontSize: "0.78rem",
@@ -88,8 +88,8 @@ function SocialLinks({ profile }: { profile: { xHandle?: string; linkedinUrl?: s
             display: "inline-flex",
             alignItems: "center",
             gap: "0.3rem",
-            background: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
+            background: "rgba(0,0,0,0.08)",
+            border: "1px solid rgba(0,0,0,0.15)",
             borderRadius: "0.4rem",
             padding: "0.25rem 0.6rem",
             fontSize: "0.8rem",

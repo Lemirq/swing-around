@@ -8,13 +8,25 @@ set -euo pipefail
 PORT=${1:-8009}
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Load OPENAI_API_KEY from .env.local if not already set
+if [ -z "${OPENAI_API_KEY:-}" ] && [ -f "$SCRIPT_DIR/../.env.local" ]; then
+  export OPENAI_API_KEY=$(grep OPENAI_API_KEY "$SCRIPT_DIR/../.env.local" | cut -d= -f2-)
+fi
+
 cleanup() {
   echo ""
   echo "Shutting down gbrain..."
   kill "$SERVER_PID" 2>/dev/null || true
-  kill "$TUNNEL_PID" 2>/dev/null || true
+  kill "${TUNNEL_PID:-}" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
+
+# Clear stale PGLite lock if present
+LOCK_FILE="$HOME/.gbrain/brain.pglite/.gbrain-lock/lock"
+if [ -f "$LOCK_FILE" ]; then
+  echo "Clearing stale PGLite lock..."
+  rm -f "$LOCK_FILE"
+fi
 
 # Start gbrain HTTP server
 echo "Starting gbrain HTTP server on port $PORT..."

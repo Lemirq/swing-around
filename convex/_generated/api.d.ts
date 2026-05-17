@@ -12,6 +12,7 @@ import type * as enrichment from "../enrichment.js";
 import type * as lib_zeroentropy from "../lib/zeroentropy.js";
 import type * as matching from "../matching.js";
 import type * as profiles from "../profiles.js";
+import type * as seed from "../seed.js";
 import type * as sessions from "../sessions.js";
 import type * as transcriptions from "../transcriptions.js";
 
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   "lib/zeroentropy": typeof lib_zeroentropy;
   matching: typeof matching;
   profiles: typeof profiles;
+  seed: typeof seed;
   sessions: typeof sessions;
   transcriptions: typeof transcriptions;
 }>;

@@ -44,24 +44,34 @@ export const extractProfile = internalAction({
       }
     }
 
-    // Enrich with Exa research, then embed and match
-    await ctx.runAction(internal.enrichment.enrichWithExa, {
+    // Enrich with The Hog people research, then store in gbrain and match
+    await ctx.runAction(internal.enrichment.enrichWithHog, {
       profileId: args.profileId,
       sessionId: args.sessionId,
     });
   },
 });
 
-export const enrichWithExa = internalAction({
+/**
+ * Enrich a profile using The Hog (thehog.ai) people research API.
+ * Replaces the previous Exa-based enrichment.
+ *
+ * The Hog provides:
+ *   POST /api/people/researches  — deep research on social identities
+ *   POST /api/v1/people/search   — find & qualify people by query
+ *   POST /api/people/enrich      — get verified contact info
+ */
+export const enrichWithHog = internalAction({
   args: {
     profileId: v.id("profiles"),
     sessionId: v.id("sessions"),
   },
   handler: async (ctx, args) => {
-    const exaApiKey = process.env.EXA_API_KEY;
+    const hogApiKey = process.env.HOG_API_KEY;
+    const HOG_BASE = "https://developer.thehog.ai";
 
-    if (!exaApiKey) {
-      console.warn("EXA_API_KEY not set, skipping Exa enrichment");
+    if (!hogApiKey) {
+      console.warn("HOG_API_KEY not set, skipping Hog enrichment");
       await ctx.runAction(internal.profiles.embedAndMatch, {
         profileId: args.profileId,
         sessionId: args.sessionId,
@@ -80,131 +90,159 @@ export const enrichWithExa = internalAction({
       return;
     }
 
-    // Build search query from what we know about the person
-    const nameParts = [profile.displayName];
-    if (profile.extractedBio) nameParts.push(profile.extractedBio);
-    if (profile.extractedInterests?.length) {
-      nameParts.push(profile.extractedInterests.slice(0, 3).join(" "));
-    }
-    const searchQuery = nameParts.join(" ");
+    const hogHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${hogApiKey}`,
+    };
 
     try {
-      // Search Exa for this person
-      const exaRes = await fetch("https://api.exa.ai/search", {
+      // Step 1: If we have social handles, use The Hog's people research
+      const identities: Array<{ platform: string; username: string }> = [];
+      if (profile.linkedinUrl) {
+        // Extract LinkedIn username from URL
+        const match = profile.linkedinUrl.match(/linkedin\.com\/in\/([^/?]+)/);
+        if (match) identities.push({ platform: "linkedin", username: match[1] });
+      }
+      if (profile.xHandle) {
+        identities.push({ platform: "x", username: profile.xHandle.replace(/^@/, "") });
+      }
+      if (profile.githubHandle) {
+        identities.push({ platform: "github", username: profile.githubHandle });
+      }
+
+      let hogResult: {
+        fullName?: string;
+        title?: string;
+        companyName?: string;
+        location?: string;
+      } | null = null;
+      const exaLinks: Array<{ url: string; title?: string; type?: string }> = [];
+
+      if (identities.length > 0) {
+        // Use The Hog people research for deep profile enrichment
+        const researchRes = await fetch(`${HOG_BASE}/api/people/researches`, {
+          method: "POST",
+          headers: hogHeaders,
+          body: JSON.stringify({ identities }),
+        });
+
+        if (researchRes.ok) {
+          const researchData = await researchRes.json();
+
+          // If async (202), poll for completion
+          if (researchRes.status === 202 && researchData.pollUrl) {
+            let pollResult = null;
+            for (let attempt = 0; attempt < 10; attempt++) {
+              await new Promise((r) => setTimeout(r, 3000));
+              const pollRes = await fetch(`${HOG_BASE}${researchData.pollUrl}`, {
+                headers: hogHeaders,
+              });
+              if (pollRes.ok) {
+                const pollData = await pollRes.json();
+                if (pollData.status === "succeeded") {
+                  pollResult = pollData.result;
+                  break;
+                }
+                if (pollData.status === "failed") break;
+              }
+            }
+            if (pollResult) hogResult = pollResult;
+          } else if (researchData.data) {
+            hogResult = researchData.data;
+          }
+        } else {
+          console.error("Hog research failed:", researchRes.status, await researchRes.text());
+        }
+      }
+
+      // Step 2: Also do a people search by name to find more info
+      const searchQuery = [
+        profile.displayName,
+        profile.extractedBio?.slice(0, 100),
+        profile.extractedInterests?.slice(0, 3).join(" "),
+      ].filter(Boolean).join(" ");
+
+      const searchRes = await fetch(`${HOG_BASE}/api/v1/people/search`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": exaApiKey,
-        },
+        headers: hogHeaders,
         body: JSON.stringify({
           query: searchQuery,
-          numResults: 10,
-          type: "neural",
-          useAutoprompt: true,
-          contents: {
-            text: { maxCharacters: 500 },
-          },
+          maxResults: 5,
         }),
       });
 
-      if (!exaRes.ok) {
-        console.error("Exa search failed:", exaRes.status, await exaRes.text());
-        await ctx.runAction(internal.profiles.embedAndMatch, {
-          profileId: args.profileId,
-          sessionId: args.sessionId,
-        });
-        return;
+      let searchPeople: Array<{
+        id?: string;
+        fullName?: string;
+        title?: string;
+        companyName?: string;
+        location?: string;
+      }> = [];
+
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        searchPeople = searchData.data ?? [];
+      } else {
+        console.error("Hog people search failed:", searchRes.status);
       }
 
-      const exaData = (await exaRes.json()) as {
-        results: Array<{
-          url: string;
-          title: string;
-          text?: string;
-        }>;
-      };
+      // Step 3: Synthesize Hog results with LLM into structured profile data
+      const hogContext = [
+        hogResult ? `Research result: ${JSON.stringify(hogResult)}` : "",
+        searchPeople.length > 0
+          ? `People search results: ${JSON.stringify(searchPeople.slice(0, 3))}`
+          : "",
+      ].filter(Boolean).join("\n\n");
 
-      const results = exaData.results ?? [];
-
-      // Collect links with type classification
-      const exaLinks: Array<{ url: string; title?: string; type?: string }> = [];
-      for (const r of results) {
-        let type = "other";
-        const url = r.url.toLowerCase();
-        if (url.includes("linkedin.com")) type = "linkedin";
-        else if (url.includes("github.com")) type = "github";
-        else if (url.includes("twitter.com") || url.includes("x.com"))
-          type = "twitter";
-        else if (
-          url.includes("medium.com") ||
-          url.includes("substack.com") ||
-          url.includes("dev.to")
-        )
-          type = "blog";
-        exaLinks.push({ url: r.url, title: r.title, type });
-      }
-
-      // Use LLM to synthesize Exa results into structured profile data
-      const resultsText = results
-        .map((r) => `[${r.title}](${r.url})\n${r.text ?? ""}`)
-        .join("\n\n");
-
-      const { output } = await generateText({
-        model: openai("gpt-4o-mini"),
-        output: Output.object({
-          schema: z.object({
-            headline: z
-              .nullable(z.string())
-              .describe("Professional headline like on LinkedIn, or null if unknown"),
-            company: z.nullable(z.string()).describe("Current company/org, or null if unknown"),
-            title: z.nullable(z.string()).describe("Current job title or role, or null if unknown"),
-            skills: z
-              .nullable(z.array(z.string()).max(10))
-              .describe("Technical or professional skills, or null if unknown"),
-            education: z
-              .nullable(z.string())
-              .describe("Most notable education (school + degree), or null if unknown"),
-            location: z.nullable(z.string()).describe("City or region, or null if unknown"),
-            linkedinUrl: z.nullable(z.string()).describe("LinkedIn profile URL if found, or null"),
-            githubHandle: z
-              .nullable(z.string())
-              .describe("GitHub username if found, or null"),
-            xHandle: z
-              .nullable(z.string())
-              .describe("Twitter/X handle if found (without @), or null"),
-            websiteUrl: z.nullable(z.string()).describe("Personal website URL if found, or null"),
-            summary: z
-              .string()
-              .describe(
-                "2-3 sentence summary of who this person is based on search results",
-              ),
+      if (hogContext) {
+        const { output } = await generateText({
+          model: openai("gpt-4o-mini"),
+          output: Output.object({
+            schema: z.object({
+              headline: z.nullable(z.string()).describe("Professional headline, or null"),
+              company: z.nullable(z.string()).describe("Current company/org, or null"),
+              title: z.nullable(z.string()).describe("Job title or role, or null"),
+              skills: z.nullable(z.array(z.string()).max(10)).describe("Professional skills, or null"),
+              education: z.nullable(z.string()).describe("Education (school + degree), or null"),
+              location: z.nullable(z.string()).describe("City or region, or null"),
+              linkedinUrl: z.nullable(z.string()).describe("LinkedIn URL if found, or null"),
+              githubHandle: z.nullable(z.string()).describe("GitHub username if found, or null"),
+              xHandle: z.nullable(z.string()).describe("X handle (without @) if found, or null"),
+              websiteUrl: z.nullable(z.string()).describe("Personal website if found, or null"),
+              summary: z.string().describe("2-3 sentence summary of who this person is"),
+            }),
           }),
-        }),
-        prompt: `Based on these search results about "${profile.displayName}", extract their professional profile info. Only include fields you're confident about. If results don't clearly match this person, return minimal data with null for unknown fields.\n\nSearch results:\n${resultsText}`,
-      });
-
-      if (output) {
-        await ctx.runMutation(internal.profiles.patchExaEnrichment, {
-          profileId: args.profileId,
-          headline: output.headline ?? undefined,
-          company: output.company ?? undefined,
-          title: output.title ?? undefined,
-          skills: output.skills ?? undefined,
-          education: output.education ?? undefined,
-          location: output.location ?? undefined,
-          linkedinUrl: output.linkedinUrl ?? undefined,
-          githubHandle: output.githubHandle ?? undefined,
-          xHandle: output.xHandle ?? undefined,
-          websiteUrl: output.websiteUrl ?? undefined,
-          exaSummary: output.summary ?? undefined,
-          exaLinks,
+          prompt: `Based on The Hog research results about "${profile.displayName}", extract their professional profile. Only include fields you're confident about.\n\nHog results:\n${hogContext}`,
         });
+
+        if (output) {
+          // Collect any discovered links
+          if (output.linkedinUrl) exaLinks.push({ url: output.linkedinUrl, title: "LinkedIn", type: "linkedin" });
+          if (output.githubHandle) exaLinks.push({ url: `https://github.com/${output.githubHandle}`, title: "GitHub", type: "github" });
+          if (output.websiteUrl) exaLinks.push({ url: output.websiteUrl, title: "Website", type: "other" });
+
+          await ctx.runMutation(internal.profiles.patchExaEnrichment, {
+            profileId: args.profileId,
+            headline: output.headline ?? undefined,
+            company: output.company ?? undefined,
+            title: output.title ?? undefined,
+            skills: output.skills ?? undefined,
+            education: output.education ?? undefined,
+            location: output.location ?? undefined,
+            linkedinUrl: output.linkedinUrl ?? undefined,
+            githubHandle: output.githubHandle ?? undefined,
+            xHandle: output.xHandle ?? undefined,
+            websiteUrl: output.websiteUrl ?? undefined,
+            exaSummary: output.summary ?? undefined,
+            exaLinks: exaLinks.length > 0 ? exaLinks : undefined,
+          });
+        }
       }
     } catch (err) {
-      console.error("Exa enrichment failed:", err);
+      console.error("Hog enrichment failed:", err);
     }
 
-    // Always proceed to embed and match regardless of Exa success
+    // Always proceed to gbrain embed and match
     await ctx.runAction(internal.profiles.embedAndMatch, {
       profileId: args.profileId,
       sessionId: args.sessionId,

@@ -40,7 +40,7 @@ export const listBySession = query({
     return await ctx.db
       .query("profiles")
       .withIndex("by_sessionId", (q) => q.eq("sessionId", args.sessionId))
-      .take(100);
+      .take(200);
   },
 });
 
@@ -55,6 +55,19 @@ export const getById = internalQuery({
   args: { profileId: v.id("profiles") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.profileId);
+  },
+});
+
+export const retriggerMatch = mutation({
+  args: { profileId: v.id("profiles") },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get(args.profileId);
+    if (!profile) throw new Error("Profile not found");
+    await ctx.db.patch(args.profileId, { embeddingStatus: "pending" });
+    await ctx.scheduler.runAfter(0, internal.enrichment.extractProfile, {
+      profileId: args.profileId,
+      sessionId: profile.sessionId,
+    });
   },
 });
 
@@ -131,6 +144,17 @@ export const patchEmbedding = internalMutation({
   },
 });
 
+/**
+ * Store profile in GBrain and find matches using GBrain's semantic search.
+ *
+ * GBrain HTTP API (gbrain-http.ts):
+ *   POST /put/:slug   — stores a page with content
+ *   POST /tag/:slug/:tag — tags a page for filtered queries
+ *   POST /query        — semantic search across stored pages
+ *
+ * This replaces the previous OpenAI embedding + Convex vector search approach.
+ * GBrain handles both the embedding generation and the similarity search internally.
+ */
 export const embedAndMatch = internalAction({
   args: {
     profileId: v.id("profiles"),
@@ -139,20 +163,28 @@ export const embedAndMatch = internalAction({
   handler: async (ctx, args) => {
     const gbrainUrl = process.env.GBRAIN_URL;
     if (!gbrainUrl) throw new Error("GBRAIN_URL is not set");
-    console.log("Using GBRAIN_URL:", gbrainUrl);
 
     const profile = await ctx.runQuery(internal.profiles.getById, {
       profileId: args.profileId,
     });
     if (!profile) throw new Error(`Profile ${args.profileId} not found`);
 
-    // Prefer LLM-extracted data over raw transcript for better embeddings
+    // Build rich content for gbrain to embed — prefer LLM-extracted data
     const parts = [
       `# ${profile.displayName}`,
+      profile.headline ? `Headline: ${profile.headline}` : "",
       profile.extractedBio ?? profile.bio ?? "",
+      profile.company ? `Company: ${profile.company}` : "",
+      profile.title ? `Role: ${profile.title}` : "",
+      profile.education ? `Education: ${profile.education}` : "",
+      profile.location ? `Location: ${profile.location}` : "",
       (profile.extractedInterests ?? profile.interests)?.length
         ? `Interests: ${(profile.extractedInterests ?? profile.interests)!.join(", ")}`
         : "",
+      (profile.skills)?.length
+        ? `Skills: ${profile.skills.join(", ")}`
+        : "",
+      profile.exaSummary ? `Background: ${profile.exaSummary}` : "",
       profile.rawTranscript ?? "",
     ].filter(Boolean);
 
@@ -169,6 +201,7 @@ export const embedAndMatch = internalAction({
     const base = gbrainUrl.replace(/\/$/, "");
 
     try {
+      // Step 1: Store the profile content in gbrain
       const putRes = await fetch(`${base}/put/${encodeURIComponent(slug)}`, {
         method: "POST",
         body: content,
@@ -178,6 +211,7 @@ export const embedAndMatch = internalAction({
         throw new Error(`gbrain PUT failed (${putRes.status}): ${body.slice(0, 200)}`);
       }
 
+      // Step 2: Tag the profile with its session for scoped queries
       const tagRes = await fetch(`${base}/tag/${encodeURIComponent(slug)}/session:${args.sessionId}`, {
         method: "POST",
       });
@@ -186,10 +220,15 @@ export const embedAndMatch = internalAction({
         throw new Error(`gbrain TAG failed (${tagRes.status}): ${body.slice(0, 200)}`);
       }
 
+      // Step 3: Query gbrain for similar profiles in this session
       const queryRes = await fetch(`${base}/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: content, sessionId: args.sessionId, limit: 20 }),
+        body: JSON.stringify({
+          query: content,
+          sessionId: args.sessionId,
+          limit: 20,
+        }),
       });
       if (!queryRes.ok) {
         const body = await queryRes.text();
