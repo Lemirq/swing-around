@@ -237,6 +237,33 @@ textarea {
   gap: 18px;
 }
 
+.form-divider {
+  background: var(--line);
+  height: 1px;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.form-section-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.voice-panel .field {
+  width: 100%;
+}
+
+.voice-panel .field input,
+.voice-panel .field textarea {
+  border-radius: 14px;
+  font-size: 0.92rem;
+  padding: 14px 16px;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -351,8 +378,8 @@ textarea {
   box-shadow: 0 24px 80px rgba(64, 47, 20, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 24px 20px 14px;
+  gap: 14px;
+  padding: 28px 24px 24px;
   width: 100%;
 }
 

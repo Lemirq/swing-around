@@ -16,13 +16,39 @@ export default defineSchema({
     displayName: v.string(),
     bio: v.optional(v.string()),
     interests: v.optional(v.array(v.string())),
+
+    // Social links
     xHandle: v.optional(v.string()),
     linkedinUrl: v.optional(v.string()),
     githubHandle: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
+
+    // LinkedIn-style fields
+    headline: v.optional(v.string()),
+    company: v.optional(v.string()),
+    title: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+    education: v.optional(v.string()),
+    location: v.optional(v.string()),
+
+    // Transcript + AI extraction
     rawTranscript: v.optional(v.string()),
     extractedBio: v.optional(v.string()),
     extractedInterests: v.optional(v.array(v.string())),
+
+    // Exa research enrichment
+    exaEnriched: v.optional(v.boolean()),
+    exaSummary: v.optional(v.string()),
+    exaLinks: v.optional(
+      v.array(
+        v.object({
+          url: v.string(),
+          title: v.optional(v.string()),
+          type: v.optional(v.string()),
+        }),
+      ),
+    ),
+
     embedding: v.optional(v.array(v.float64())),
     metadata: v.optional(v.any()),
     embeddingStatus: v.union(

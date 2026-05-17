@@ -86,6 +86,41 @@ export const patchExtracted = internalMutation({
   },
 });
 
+export const patchExaEnrichment = internalMutation({
+  args: {
+    profileId: v.id("profiles"),
+    headline: v.optional(v.string()),
+    company: v.optional(v.string()),
+    title: v.optional(v.string()),
+    skills: v.optional(v.array(v.string())),
+    education: v.optional(v.string()),
+    location: v.optional(v.string()),
+    xHandle: v.optional(v.string()),
+    linkedinUrl: v.optional(v.string()),
+    githubHandle: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    exaSummary: v.optional(v.string()),
+    exaLinks: v.optional(
+      v.array(
+        v.object({
+          url: v.string(),
+          title: v.optional(v.string()),
+          type: v.optional(v.string()),
+        }),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { profileId, ...fields } = args;
+    // Only patch fields that are defined (don't overwrite existing data with undefined)
+    const patch: Record<string, unknown> = { exaEnriched: true };
+    for (const [key, val] of Object.entries(fields)) {
+      if (val !== undefined) patch[key] = val;
+    }
+    await ctx.db.patch(profileId, patch);
+  },
+});
+
 export const patchEmbedding = internalMutation({
   args: {
     profileId: v.id("profiles"),
@@ -104,6 +139,7 @@ export const embedAndMatch = internalAction({
   handler: async (ctx, args) => {
     const gbrainUrl = process.env.GBRAIN_URL;
     if (!gbrainUrl) throw new Error("GBRAIN_URL is not set");
+    console.log("Using GBRAIN_URL:", gbrainUrl);
 
     const profile = await ctx.runQuery(internal.profiles.getById, {
       profileId: args.profileId,
@@ -133,20 +169,32 @@ export const embedAndMatch = internalAction({
     const base = gbrainUrl.replace(/\/$/, "");
 
     try {
-      await fetch(`${base}/put/${encodeURIComponent(slug)}`, {
+      const putRes = await fetch(`${base}/put/${encodeURIComponent(slug)}`, {
         method: "POST",
         body: content,
       });
+      if (!putRes.ok) {
+        const body = await putRes.text();
+        throw new Error(`gbrain PUT failed (${putRes.status}): ${body.slice(0, 200)}`);
+      }
 
-      await fetch(`${base}/tag/${encodeURIComponent(slug)}/session:${args.sessionId}`, {
+      const tagRes = await fetch(`${base}/tag/${encodeURIComponent(slug)}/session:${args.sessionId}`, {
         method: "POST",
       });
+      if (!tagRes.ok) {
+        const body = await tagRes.text();
+        throw new Error(`gbrain TAG failed (${tagRes.status}): ${body.slice(0, 200)}`);
+      }
 
       const queryRes = await fetch(`${base}/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: content, sessionId: args.sessionId, limit: 20 }),
       });
+      if (!queryRes.ok) {
+        const body = await queryRes.text();
+        throw new Error(`gbrain QUERY failed (${queryRes.status}): ${body.slice(0, 200)}`);
+      }
       const queryData = (await queryRes.json()) as {
         ok: boolean;
         results: Array<{ slug: string; score: number; preview: string }>;

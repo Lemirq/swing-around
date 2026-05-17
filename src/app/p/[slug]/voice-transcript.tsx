@@ -23,6 +23,25 @@ export function VoiceTranscript({ slug, sessionId }: Props) {
   const githubRef = useRef<HTMLInputElement>(null);
   const websiteRef = useRef<HTMLInputElement>(null);
 
+  async function handleSampleSubmit() {
+    setSubmitState("submitting");
+    try {
+      const profileId = await createProfile({
+        sessionId,
+        displayName: "Vihaan Sharma",
+        rawTranscript: "My name is Vihaan. I'm really into full-stack development and AI engineering. I'm really into fintech as well and I'm looking for founders in the crypto space. One fun fact about me is that I can stand on three pinkies.",
+        xHandle: "vhaanca",
+        linkedinUrl: "https://www.linkedin.com/in/vs190/",
+        websiteUrl: "https://vhaan.me",
+      });
+      setSubmitState("done");
+      router.push(`/p/${slug}/explore?profileId=${profileId}`);
+    } catch (err) {
+      console.error("Profile creation failed:", err);
+      setSubmitState("error");
+    }
+  }
+
   async function handleSubmit() {
     const displayName = nameRef.current?.value.trim() ?? "";
     if (!displayName) {
@@ -56,40 +75,87 @@ export function VoiceTranscript({ slug, sessionId }: Props) {
 
   return (
     <div className="mic-stage" data-state="idle">
-      <div className="voice-panel" style={{ display: "flex", flexDirection: "column", gap: "0.75rem", width: "100%" }}>
-        <input
-          ref={nameRef}
-          placeholder="Your full name"
-          type="text"
-          aria-label="Your full name"
-        />
-        <textarea
-          ref={bioRef}
-          placeholder="Tell us about yourself — interests, skills, what you're looking for..."
-          rows={4}
-          aria-label="About you"
-          style={{ fontSize: "0.9rem", resize: "vertical" }}
-        />
+      <div className="voice-panel">
+        <div className="field">
+          <label htmlFor="name">Full Name</label>
+          <input
+            ref={nameRef}
+            id="name"
+            placeholder="Jane Smith"
+            type="text"
+          />
+        </div>
 
-        <p style={{ fontSize: "0.85rem", opacity: 0.7, margin: 0 }}>
-          Add your links so matches can connect with you
-        </p>
-        <input ref={xHandleRef} placeholder="X / Twitter handle (e.g. @you)" type="text" style={{ fontSize: "0.9rem" }} />
-        <input ref={linkedinRef} placeholder="LinkedIn URL" type="url" style={{ fontSize: "0.9rem" }} />
-        <input ref={githubRef} placeholder="GitHub username" type="text" style={{ fontSize: "0.9rem" }} />
-        <input ref={websiteRef} placeholder="Website URL" type="url" style={{ fontSize: "0.9rem" }} />
+        <div className="field">
+          <label htmlFor="bio">About You</label>
+          <textarea
+            ref={bioRef}
+            id="bio"
+            placeholder="Tell us about yourself — interests, skills, what you're looking for..."
+            rows={4}
+          />
+        </div>
+
+        <div className="form-divider" />
+
+        <p className="form-section-label">Your Links</p>
+
+        <div className="field">
+          <label htmlFor="x">X / Twitter</label>
+          <input ref={xHandleRef} id="x" placeholder="@handle" type="text" />
+        </div>
+
+        <div className="field">
+          <label htmlFor="linkedin">LinkedIn</label>
+          <input
+            ref={linkedinRef}
+            id="linkedin"
+            placeholder="linkedin.com/in/you"
+            type="url"
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="github">GitHub</label>
+          <input
+            ref={githubRef}
+            id="github"
+            placeholder="username"
+            type="text"
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="website">Website</label>
+          <input
+            ref={websiteRef}
+            id="website"
+            placeholder="yoursite.com"
+            type="url"
+          />
+        </div>
 
         <button
           className="primary-button"
           disabled={submitState === "submitting" || submitState === "done"}
           onClick={handleSubmit}
           type="button"
+          style={{ width: "100%", marginTop: "8px" }}
         >
           {submitState === "submitting"
             ? "Saving profile..."
             : submitState === "error"
               ? "Error — try again"
               : "Submit my profile"}
+        </button>
+
+        <button
+          type="button"
+          disabled={submitState === "submitting" || submitState === "done"}
+          onClick={handleSampleSubmit}
+          style={{ width: "100%", marginTop: "4px", padding: "0.5rem", fontSize: "0.8rem", opacity: 0.6, background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "0.4rem", color: "inherit", cursor: "pointer" }}
+        >
+          Quick test (Vihaan sample)
         </button>
       </div>
     </div>

@@ -79,6 +79,11 @@ const server = Bun.serve({
         return Response.json({ ok: true, results: parseQueryOutput(raw) });
       }
 
+      // GET / health check
+      if (req.method === "GET" && (path === "/" || path === "")) {
+        return new Response("gbrain online", { status: 200 });
+      }
+
       return Response.json({ error: "Not found" }, { status: 404 });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
